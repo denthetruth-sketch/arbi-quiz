@@ -2,7 +2,8 @@
 
 import {
   QUIZ, TEAM_NAMES, R, db, ref, onValue, get, set, onConnection, serverNow,
-  stepAt, roundOf, questionOf, roundLabel, keyOf, fmtClock, clampBet, el, ROOM, path
+  stepAt, roundOf, questionOf, roundLabel, keyOf, fmtClock, clampBet, el, ROOM, path,
+  cleanTeamName, nameTaken, MAX_TEAMS, NAME_MAX
 } from './shared.js';
 
 const root = document.getElementById('root');
@@ -55,48 +56,95 @@ requestAnimationFrame(tick);
 
 // ---------- вход в команду ----------
 
-async function claim(idx) {
+async function claim(raw) {
   if (busy) return;
+  const name = cleanTeamName(raw);
+  if (!name) { pickError('Введите название команды'); return; }
   busy = true;
-  const id = 't' + idx;
   try {
-    const snap = await get(ref(db, path('teams/' + id)));
-    if (snap.exists()) {
-      alert('Эту команду уже взяли. Выберите другую.');
+    const snap = await get(ref(db, path('teams')));
+    const teams = snap.val() || {};
+    if (Object.keys(teams).length >= MAX_TEAMS) {
+      pickError('Все ' + MAX_TEAMS + ' мест заняты. Подойдите к ведущему.');
       busy = false;
       return;
     }
-    await set(ref(db, path('teams/' + id)), {
-      name: TEAM_NAMES[idx],
-      score: 0,
-      joinedAt: Date.now()
-    });
+    if (nameTaken(teams, name)) {
+      pickError('Такое название уже есть. Придумайте другое.');
+      busy = false;
+      return;
+    }
+    const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const team = { name, score: 0, joinedAt: Date.now() };
+    await set(ref(db, path('teams/' + id)), team);
+    // не ждём, пока база пришлёт обновление: иначе render() не найдёт команду и забудет её
+    data = { ...data, teams: { ...(data.teams || {}), [id]: team } };
     myId = id;
     try { localStorage.setItem(STORE_KEY, id); } catch (e) { /* приватный режим */ }
+    pick = null;
   } catch (e) {
-    alert('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз.');
+    pickError('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз.');
   }
   busy = false;
   render();
 }
 
-function screenPick() {
+// Экран ввода строится один раз и дальше только обновляется:
+// иначе любое изменение в базе стирало бы набранный текст и закрывало клавиатуру.
+let pick = null;
+
+function pickError(text) {
+  if (pick) pick.err.textContent = text || '';
+}
+
+function buildPick() {
+  const input = el('input', {
+    type: 'text', maxlength: String(NAME_MAX), placeholder: 'Название команды',
+    autocomplete: 'off', enterkeyhint: 'go'
+  });
+  input.addEventListener('input', () => pickError(''));
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') claim(input.value); });
+  const err = el('div', { class: 'play-ctx', style: 'color:var(--danger);letter-spacing:0;min-height:1.2em' });
+  const ideas = el('div', { class: 'namegrid' });
+  const ideasBox = el('div', {}, [
+    el('div', { class: 'play-ctx', style: 'margin:8px 0', text: 'ИЛИ ВОЗЬМИТЕ ГОТОВОЕ' }),
+    ideas
+  ]);
+  const full = el('div', { class: 'big-msg', text: 'Все места заняты. Подойдите к ведущему.' });
+  const form = el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, [
+    input,
+    el('button', { class: 'btn primary wide big', text: 'Войти в игру', onclick: () => claim(input.value) }),
+    err,
+    ideasBox
+  ]);
+  const node = el('div', { class: 'play-body' }, [
+    el('div', { class: 'play-ctx', text: 'ОДИН ТЕЛЕФОН НА КОМАНДУ' }),
+    form,
+    full
+  ]);
+  pick = { node, input, err, ideas, ideasBox, form, full };
+}
+
+function refreshPick() {
   const teams = data.teams || {};
+  const isFull = Object.keys(teams).length >= MAX_TEAMS;
+  pick.form.style.display = isFull ? 'none' : 'flex';
+  pick.full.style.display = isFull ? '' : 'none';
+  const free = TEAM_NAMES.filter((n) => !nameTaken(teams, n));
+  pick.ideas.textContent = '';
+  free.forEach((n) => pick.ideas.appendChild(el('button', {
+    text: n,
+    onclick: () => { pick.input.value = n; pickError(''); }
+  })));
+  pick.ideasBox.style.display = free.length ? '' : 'none';
+}
+
+function screenPick() {
+  if (!pick) buildPick();
+  refreshPick();
   return [
-    el('div', { class: 'play-head' }, [el('div', { class: 'nm', text: 'Выберите команду' })]),
-    el('div', { class: 'play-body' }, [
-      el('div', { class: 'play-ctx', text: 'ОДИН ТЕЛЕФОН НА КОМАНДУ' }),
-      el('div', { class: 'namegrid' }, TEAM_NAMES.map((n, i) => {
-        const taken = !!teams['t' + i];
-        return el('button', {
-          class: '',
-          text: n,
-          disabled: taken ? 'disabled' : null,
-          onclick: () => claim(i)
-        });
-      })),
-      el('div', { class: 'play-ctx', style: 'margin-top:8px', text: 'СЕРЫЕ — УЖЕ ЗАНЯТЫ' })
-    ])
+    el('div', { class: 'play-head' }, [el('div', { class: 'nm', text: 'Как назовётесь?' })]),
+    pick.node
   ];
 }
 
@@ -307,6 +355,7 @@ function render() {
     ];
   } else if (!me()) {
     if (myId) { try { localStorage.removeItem(STORE_KEY); } catch (e) {} myId = null; }
+    if (pick && pick.node.isConnected) { refreshPick(); return; }
     nodes = screenPick();
   } else {
     let body;

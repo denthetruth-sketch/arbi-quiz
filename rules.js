@@ -146,3 +146,20 @@ export function sortedTeams(teams) {
 export function ranked(teams) {
   return sortedTeams(teams).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 }
+
+// ---------- названия команд ----------
+
+export const MAX_TEAMS = 6;
+export const NAME_MAX = 24;
+
+// Пробелы схлопываются, длина обрезается. Пустая строка — названия нет.
+export function cleanTeamName(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+}
+
+// Занято ли название: без учёта регистра, лишних пробелов и разницы «е»/«ё».
+export function nameTaken(teams, name) {
+  const norm = (x) => cleanTeamName(x).toLowerCase().replace(/ё/g, 'е');
+  const n = norm(name);
+  return Object.values(teams || {}).some((t) => norm(t && t.name) === n);
+}

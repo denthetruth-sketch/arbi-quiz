@@ -135,6 +135,19 @@ function clearTeams() {
   update(R(), { teams: null, answers: null, bets: null, applied: null, lastKey: null, lastDeltas: null, lastVerdicts: null });
 }
 
+function removeTeam(t) {
+  if (!confirm('Удалить команду «' + t.name + '»? Её счёт, ответы и ставки пропадут, капитан сможет подключиться заново.')) return;
+  const updates = { ['teams/' + t.id]: null };
+  ['answers', 'bets'].forEach((kind) => {
+    Object.entries(data[kind] || {}).forEach(([key, byTeam]) => {
+      if (byTeam && t.id in byTeam) updates[kind + '/' + key + '/' + t.id] = null;
+    });
+  });
+  if (data.lastDeltas && t.id in data.lastDeltas) updates['lastDeltas/' + t.id] = null;
+  if (data.lastVerdicts && t.id in data.lastVerdicts) updates['lastVerdicts/' + t.id] = null;
+  update(R(), updates);
+}
+
 function setScore(id, value) {
   const v = Math.max(0, Math.floor(Number(value) || 0));
   set(ref(db, path('teams/' + id + '/score')), v);
@@ -267,7 +280,8 @@ function blockTeams() {
       el('div', { class: 'ans', style: 'min-width:24px', text: String(i + 1) }),
       el('div', { class: 'nm', text: t.name }),
       input,
-      el('button', { class: 'btn ghost', style: 'padding:8px 12px;font-size:13px', text: 'ОК', onclick: () => setScore(t.id, input.value) })
+      el('button', { class: 'btn ghost', style: 'padding:8px 12px;font-size:13px', text: 'ОК', onclick: () => setScore(t.id, input.value) }),
+      el('button', { class: 'btn danger', style: 'padding:8px 12px;font-size:13px', title: 'Удалить команду', text: '✕', onclick: () => removeTeam(t) })
     ]);
   });
 
@@ -276,7 +290,7 @@ function blockTeams() {
     el('div', { class: 'tlist' }, rows.length ? rows : [el('div', { class: 'muted', text: 'Пока никто не подключился' })]),
     el('div', { class: 'row', style: 'margin-top:14px' }, [
       el('button', { class: 'btn ghost', text: 'Сбросить игру', onclick: resetGame }),
-      el('button', { class: 'btn danger', text: 'Удалить команды', onclick: clearTeams })
+      el('button', { class: 'btn danger', text: 'Удалить все команды', onclick: clearTeams })
     ])
   ]);
 }

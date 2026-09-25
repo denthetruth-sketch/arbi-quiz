@@ -1,7 +1,7 @@
 // Табло на проекторе. Только показывает состояние, ничего не пишет.
 
 import {
-  QUIZ, TEAM_NAMES, R, onValue, onConnection, serverNow,
+  QUIZ, MAX_TEAMS, R, onValue, onConnection, serverNow,
   stepAt, roundOf, questionOf, roundLabel, keyOf,
   fmtClock, sortedTeams, ranked, el, ROOM
 } from './shared.js';
@@ -88,7 +88,7 @@ function screenLobby() {
   teams.forEach((t) => {
     rows.push(el('div', { class: 'join-row' }, [el('i', {}), el('span', { text: t.name })]));
   });
-  if (teams.length < TEAM_NAMES.length) {
+  if (teams.length < MAX_TEAMS) {
     rows.push(el('div', { class: 'join-row empty' }, [el('i', {}), el('span', { text: 'ждём капитана…' })]));
   }
 
@@ -109,7 +109,7 @@ function screenLobby() {
             el('div', { class: 'lbl', text: 'ПОДКЛЮЧИЛИСЬ' }),
             el('div', { class: 'grow' }),
             el('b', { text: String(teams.length) }),
-            el('span', { text: '/ ' + TEAM_NAMES.length })
+            el('span', { text: '/ ' + MAX_TEAMS })
           ]),
           el('div', { class: 'join-list' }, rows)
         ])

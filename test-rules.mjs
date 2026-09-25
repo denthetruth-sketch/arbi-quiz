@@ -2,7 +2,8 @@
 import { QUIZ } from './quiz-data.js';
 import {
   STEPS, stepAt, roundOf, questionOf, keyOf, stepTitle,
-  autoVerdicts, deltaFor, applyDelta, clampBet, parseNum, ranked
+  autoVerdicts, deltaFor, applyDelta, clampBet, parseNum, ranked,
+  cleanTeamName, nameTaken, NAME_MAX
 } from './rules.js';
 
 let pass = 0, fail = 0;
@@ -169,6 +170,18 @@ eq('сортировка по баллам', table.map((t) => t.name), ['ДЕП�
   s.C = applyDelta(s.C, deltaFor(r4, false, 1));
   s.C = applyDelta(s.C, deltaFor(r4, false, 1));
   eq('C не в минусе', s.C, 0);
+}
+
+// ---------- названия команд ----------
+eq('пробелы схлопываются', cleanTeamName('  Биржевые   волки '), 'Биржевые волки');
+eq('пустое название', cleanTeamName('   '), '');
+eq('длинное обрезается', cleanTeamName('Я'.repeat(40)).length, NAME_MAX);
+{
+  const teams = { a: { name: 'Биржевые волки' }, b: { name: 'Ёжики' } };
+  ok('занято без учёта регистра', nameTaken(teams, 'БИРЖЕВЫЕ  ВОЛКИ'));
+  ok('е и ё одно и то же', nameTaken(teams, 'ежики'));
+  ok('свободное название', !nameTaken(teams, 'Эскроу'));
+  ok('пустая база', !nameTaken(null, 'Эскроу'));
 }
 
 console.log('\nпройдено: ' + pass + ', провалено: ' + fail);
