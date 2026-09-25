@@ -13,6 +13,7 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 let data = {};
 let verdictKey = null;
 let verdicts = {};
+let overrides = {};
 let clockNode = null;
 
 onConnection((ok) => { offlineBar.hidden = ok; });
@@ -71,22 +72,30 @@ function stopTimer() {
   update(R('state'), { timerEnd: serverNow(), locked: true });
 }
 
+// Закрыть приём = остановить таймер. Открыть заново — таймер не трогаем,
+// его можно запустить снова или добавить 15 секунд.
 function toggleLock() {
-  update(R('state'), { locked: !state().locked });
+  if (state().locked) update(R('state'), { locked: false });
+  else stopTimer();
 }
 
+// Вердикты пересчитываются каждый раз из текущих ответов и команд:
+// раньше они запоминались при первом показе разбора и потом не обновлялись,
+// поэтому ответ, пришедший позже, или команда, переподключившаяся под новым id,
+// получали «неверно». Ручные переключения ведущего хранятся отдельно и не теряются.
 function ensureVerdicts(step) {
   const key = keyOf(step);
-  if (verdictKey === key) return;
+  if (verdictKey !== key) { overrides = {}; verdictKey = key; }
   const r = roundOf(step);
   const q = questionOf(step);
   const ids = sortedTeams(data.teams).map((t) => t.id);
   const answers = (data.answers || {})[key] || {};
   verdicts = autoVerdicts(r, q, ids, answers);
-  verdictKey = key;
+  Object.keys(overrides).forEach((id) => { if (id in verdicts) verdicts[id] = overrides[id]; });
 }
 
 function applyScores(step) {
+  ensureVerdicts(step);
   const key = keyOf(step);
   const r = roundOf(step);
   const teams = sortedTeams(data.teams);
@@ -245,9 +254,9 @@ function blockJudge() {
       el('div', { class: 'ans', text: shown + (r.kind === 'bet' ? ' · ст. ' + (bets[t.id] != null ? bets[t.id] : '—') : '') }),
       el('button', {
         class: 'toggle ' + (ok ? 'yes' : 'no'),
-        text: ok ? 'верно' : 'мимо',
+        text: ok ? 'Верно' : 'Неверно',
         disabled: applied ? 'disabled' : null,
-        onclick: () => { verdicts[t.id] = !ok; render(); }
+        onclick: () => { overrides[t.id] = !ok; render(); }
       }),
       el('div', { class: 'dl ' + (d > 0 ? 'up' : d < 0 ? 'down' : ''), text: d === 0 ? '0' : (d > 0 ? '+' : '') + d }),
       el('div', { class: 'sc', text: String(t.score) })

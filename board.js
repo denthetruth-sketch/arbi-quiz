@@ -57,12 +57,78 @@ function timerClock() {
   return c;
 }
 
+// ---------- звук таймера ----------
+// Браузер не даёт сайту играть звук, пока по странице не кликнули,
+// поэтому звук включается кнопкой в углу табло — один раз после открытия.
+
+const SOUND_KEY = 'arbi-quiz:board-sound';
+let audio = null;
+let soundOn = false;
+let lastTickSec = null;
+try { soundOn = localStorage.getItem(SOUND_KEY) === '1'; } catch (e) { soundOn = false; }
+
+const soundBtn = el('button', { class: 'sound-btn', onclick: toggleSound });
+document.body.appendChild(soundBtn);
+
+function soundReady() {
+  return soundOn && audio && audio.state === 'running';
+}
+
+function paintSoundBtn() {
+  soundBtn.textContent = soundReady() ? '🔊 Звук' : soundOn ? '🔈 Нажмите для звука' : '🔇 Звук';
+  soundBtn.classList.toggle('on', soundReady());
+}
+
+function toggleSound() {
+  if (soundOn && soundReady()) {
+    soundOn = false;
+  } else {
+    soundOn = true;
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume().then(paintSoundBtn);
+  }
+  try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) { /* приватный режим */ }
+  paintSoundBtn();
+}
+paintSoundBtn();
+
+let noise = null;
+function playTick(tock, loud) {
+  if (!soundReady()) return;
+  if (!noise) {
+    noise = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.05), audio.sampleRate);
+    const ch = noise.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  }
+  const t = audio.currentTime;
+  const src = audio.createBufferSource();
+  src.buffer = noise;
+  const bp = audio.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = tock ? 2200 : 3200;
+  bp.Q.value = 6;
+  const g = audio.createGain();
+  g.gain.setValueAtTime(loud ? 1.6 : 0.8, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+  src.connect(bp).connect(g).connect(audio.destination);
+  src.start(t);
+  src.stop(t + 0.05);
+}
+
 function tickClocks() {
   const st = data.state || {};
   const end = st.timerEnd || 0;
   const dur = (st.timerDur || 0) * 1000;
   const left = end ? Math.max(0, end - serverNow()) : 0;
   const warn = end > 0 && left <= 10000 && left > 0;
+
+  // тик раз в секунду, пока идёт таймер; последние 10 секунд — громче
+  const running = end > 0 && left > 0 && !st.locked;
+  const sec = running ? Math.ceil(left / 1000) : null;
+  if (sec !== lastTickSec) {
+    if (sec != null && lastTickSec != null) playTick(sec % 2 === 0, sec <= 10);
+    lastTickSec = sec;
+  }
 
   clockNodes.forEach(({ kind, node }) => {
     if (kind === 'clock') {
@@ -222,7 +288,7 @@ function screenQuestion(step) {
     head(roundLabel(r)),
     timerBar(),
     qhead,
-    el('h1', { class: 'qtext' + (q.text.length > 180 ? ' small' : ''), text: q.text }),
+    el('h1', { class: 'qtext' + (q.text.length > 260 ? ' xsmall' : q.text.length > 180 ? ' small' : ''), text: q.text }),
     ...body,
     statusStrip(step),
     foot()
@@ -246,7 +312,7 @@ function screenReveal(step) {
     ]));
   } else {
     nodes.push(el('div', { class: 'answer' }, [
-      el('div', { class: 'body', style: 'font-size:2rem', text: q.answerLabel })
+      el('div', { class: 'body', style: 'font-size:calc(2.75rem * var(--fit, 1))', text: q.answerLabel })
     ]));
   }
 
@@ -366,6 +432,20 @@ function render() {
 
   root.textContent = '';
   nodes.filter(Boolean).forEach((n) => root.appendChild(n));
+  fitText();
 }
+
+// Вопрос, варианты и ответ — крупным шрифтом. Если длинный вопрос не влезает
+// на экран проектора, их шрифт уменьшается ступеньками, пока всё не поместится.
+function fitText() {
+  let fit = 1;
+  root.style.setProperty('--fit', '1');
+  while (fit > 0.5 && root.scrollHeight > root.clientHeight + 1) {
+    fit -= 0.05;
+    root.style.setProperty('--fit', fit.toFixed(2));
+  }
+}
+
+window.addEventListener('resize', fitText);
 
 render();

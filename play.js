@@ -311,7 +311,7 @@ function bodyReveal(step) {
     out.push(el('div', {
       class: 'big-msg',
       style: 'color:' + (ok ? 'var(--teal)' : 'var(--danger)'),
-      text: (ok ? 'Верно' : 'Мимо') + (d ? '  ' + (d > 0 ? '+' : '') + d : '')
+      text: (ok ? 'Верно' : 'Неверно') + (d ? '  ' + (d > 0 ? '+' : '') + d : '')
     }));
   }
   return out;
