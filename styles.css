@@ -287,6 +287,9 @@ input[type=number], input[type=text] {
 .play-head { display: flex; align-items: center; gap: 10px; }
 .play-head .nm { font-size: 18px; font-weight: 700; flex-grow: 1; }
 .play-head .sc { font-size: 15px; font-weight: 700; color: var(--teal); }
+.play-head .code { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.code-box { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.code-box b { font-size: 40px; letter-spacing: .2em; font-variant-numeric: tabular-nums; color: var(--orange); }
 .play-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 .play-ctx { text-align: center; color: var(--dim); font-size: 14px; letter-spacing: .1em; }
 .play-clock { text-align: center; font-size: 46px; font-weight: 700; font-variant-numeric: tabular-nums; }

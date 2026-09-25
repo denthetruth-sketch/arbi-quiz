@@ -3,7 +3,7 @@
 import {
   QUIZ, STEPS, R, db, ref, onValue, set, update, remove, onConnection, serverNow,
   stepAt, roundOf, questionOf, roundLabel, keyOf, stepTitle,
-  autoVerdicts, deltaFor, fmtClock, sortedTeams, ranked, el, ROOM, path
+  autoVerdicts, deltaFor, fmtClock, sortedTeams, ranked, el, ROOM, path, makeTeamCode
 } from './shared.js';
 
 const root = document.getElementById('root');
@@ -20,8 +20,24 @@ onConnection((ok) => { offlineBar.hidden = ok; });
 
 onValue(R(), (snap) => {
   data = snap.val() || {};
+  giveMissingCodes();
   render();
 });
+
+// Командам, которые подключились до появления кодов, код выдаёт пульт.
+function giveMissingCodes() {
+  const teams = { ...(data.teams || {}) };
+  const updates = {};
+  Object.entries(teams).forEach(([id, t]) => {
+    if (t && !t.code) {
+      const code = makeTeamCode(teams);
+      if (!code) return;
+      teams[id] = { ...t, code };
+      updates['teams/' + id + '/code'] = code;
+    }
+  });
+  if (Object.keys(updates).length) update(R(), updates);
+}
 
 const state = () => data.state || { stepIdx: 0 };
 const curStep = () => stepAt(state().stepIdx || 0);
@@ -288,6 +304,7 @@ function blockTeams() {
     return el('div', { class: 'trow' }, [
       el('div', { class: 'ans', style: 'min-width:24px', text: String(i + 1) }),
       el('div', { class: 'nm', text: t.name }),
+      el('div', { class: 'ans', style: 'min-width:0', title: 'Код для входа с другого телефона', text: (data.teams[t.id] || {}).code ? 'код ' + data.teams[t.id].code : '' }),
       input,
       el('button', { class: 'btn ghost', style: 'padding:8px 12px;font-size:13px', text: 'ОК', onclick: () => setScore(t.id, input.value) }),
       el('button', { class: 'btn danger', style: 'padding:8px 12px;font-size:13px', title: 'Удалить команду', text: '✕', onclick: () => removeTeam(t) })

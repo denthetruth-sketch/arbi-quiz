@@ -3,7 +3,7 @@ import { QUIZ } from './quiz-data.js';
 import {
   STEPS, stepAt, roundOf, questionOf, keyOf, stepTitle,
   autoVerdicts, deltaFor, applyDelta, clampBet, parseNum, ranked,
-  cleanTeamName, nameTaken, NAME_MAX
+  cleanTeamName, nameTaken, NAME_MAX, makeTeamCode, findTeamByCode
 } from './rules.js';
 
 let pass = 0, fail = 0;
@@ -182,6 +182,22 @@ eq('длинное обрезается', cleanTeamName('Я'.repeat(40)).length,
   ok('е и ё одно и то же', nameTaken(teams, 'ежики'));
   ok('свободное название', !nameTaken(teams, 'Эскроу'));
   ok('пустая база', !nameTaken(null, 'Эскроу'));
+}
+
+// ---------- код команды ----------
+{
+  const teams = { a: { name: 'A', code: '1234' }, b: { name: 'B', code: '5678' } };
+  eq('находит по коду', findTeamByCode(teams, '5678'), 'b');
+  eq('код с пробелами', findTeamByCode(teams, ' 12 34 '), 'a');
+  eq('чужой код', findTeamByCode(teams, '0000'), null);
+  eq('короткий код', findTeamByCode(teams, '123'), null);
+  eq('пустая база', findTeamByCode(null, '1234'), null);
+  const code = makeTeamCode(teams);
+  ok('код из 4 цифр', /^\d{4}$/.test(code));
+  ok('код не повторяет занятый', code !== '1234' && code !== '5678');
+  // генератор, который сначала выдаёт занятый код, а потом свободный
+  const seq = [0.0259, 0.0259, 0.5];
+  eq('занятый код пропускается', makeTeamCode({ a: { code: '1233' } }, () => seq.shift()), '5500');
 }
 
 console.log('\nпройдено: ' + pass + ', провалено: ' + fail);

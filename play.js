@@ -3,7 +3,7 @@
 import {
   QUIZ, TEAM_NAMES, R, db, ref, onValue, get, set, onConnection, serverNow,
   stepAt, roundOf, questionOf, roundLabel, keyOf, fmtClock, clampBet, el, ROOM, path,
-  cleanTeamName, nameTaken, MAX_TEAMS, NAME_MAX
+  cleanTeamName, nameTaken, MAX_TEAMS, NAME_MAX, makeTeamCode, findTeamByCode
 } from './shared.js';
 
 const root = document.getElementById('root');
@@ -70,23 +70,48 @@ async function claim(raw) {
       return;
     }
     if (nameTaken(teams, name)) {
-      pickError('Такое название уже есть. Придумайте другое.');
+      pickError('Такое название уже есть. Если это ваша команда — нажмите «Мы уже в игре» ниже.');
       busy = false;
       return;
     }
     const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const team = { name, score: 0, joinedAt: Date.now() };
+    const team = { name, score: 0, joinedAt: Date.now(), code: makeTeamCode(teams) };
     await set(ref(db, path('teams/' + id)), team);
-    // не ждём, пока база пришлёт обновление: иначе render() не найдёт команду и забудет её
-    data = { ...data, teams: { ...(data.teams || {}), [id]: team } };
-    myId = id;
-    try { localStorage.setItem(STORE_KEY, id); } catch (e) { /* приватный режим */ }
-    pick = null;
+    enterTeam(id, team);
   } catch (e) {
     pickError('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз.');
   }
   busy = false;
   render();
+}
+
+// Вернуться в уже существующую команду по её коду — со всем счётом.
+async function rejoin(raw) {
+  if (busy) return;
+  if (String(raw || '').replace(/\D/g, '').length !== 4) { pickError('Код — четыре цифры'); return; }
+  busy = true;
+  try {
+    const snap = await get(ref(db, path('teams')));
+    const teams = snap.val() || {};
+    const id = findTeamByCode(teams, raw);
+    if (!id) {
+      pickError('Команды с таким кодом нет. Код есть на телефоне капитана и у ведущего.');
+    } else {
+      enterTeam(id, teams[id]);
+    }
+  } catch (e) {
+    pickError('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз.');
+  }
+  busy = false;
+  render();
+}
+
+function enterTeam(id, team) {
+  // не ждём, пока база пришлёт обновление: иначе render() не найдёт команду и забудет её
+  data = { ...data, teams: { ...(data.teams || {}), [id]: team } };
+  myId = id;
+  try { localStorage.setItem(STORE_KEY, id); } catch (e) { /* приватный режим */ }
+  pick = null;
 }
 
 // Экран ввода строится один раз и дальше только обновляется:
@@ -110,26 +135,48 @@ function buildPick() {
     el('div', { class: 'play-ctx', style: 'margin:8px 0', text: 'ИЛИ ВОЗЬМИТЕ ГОТОВОЕ' }),
     ideas
   ]);
-  const full = el('div', { class: 'big-msg', text: 'Все места заняты. Подойдите к ведущему.' });
+  const full = el('div', { class: 'big-msg', text: 'Все места заняты' });
   const form = el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, [
     input,
     el('button', { class: 'btn primary wide big', text: 'Войти в игру', onclick: () => claim(input.value) }),
-    err,
     ideasBox
   ]);
+
+  const codeInput = el('input', {
+    type: 'text', inputmode: 'numeric', maxlength: '4', placeholder: 'Код команды, 4 цифры',
+    autocomplete: 'off', enterkeyhint: 'go'
+  });
+  codeInput.addEventListener('input', () => pickError(''));
+  codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') rejoin(codeInput.value); });
+  const back = el('div', { style: 'display:none;flex-direction:column;gap:12px' }, [
+    el('div', { class: 'play-ctx', style: 'letter-spacing:0', text: 'Код показан на телефоне капитана. Если его нет — спросите у ведущего.' }),
+    codeInput,
+    el('button', { class: 'btn primary wide big', text: 'Вернуться в команду', onclick: () => rejoin(codeInput.value) })
+  ]);
+  const toggle = el('button', { class: 'btn ghost wide', onclick: () => { pick.rejoinMode = !pick.rejoinMode; pickError(''); refreshPick(); } });
+
   const node = el('div', { class: 'play-body' }, [
     el('div', { class: 'play-ctx', text: 'ОДИН ТЕЛЕФОН НА КОМАНДУ' }),
     form,
-    full
+    full,
+    back,
+    err,
+    toggle
   ]);
-  pick = { node, input, err, ideas, ideasBox, form, full };
+  const title = el('div', { class: 'nm' });
+  const headNode = el('div', { class: 'play-head' }, [title]);
+  pick = { node, headNode, title, input, err, ideas, ideasBox, form, full, back, toggle, codeInput, rejoinMode: false };
 }
 
 function refreshPick() {
   const teams = data.teams || {};
   const isFull = Object.keys(teams).length >= MAX_TEAMS;
-  pick.form.style.display = isFull ? 'none' : 'flex';
-  pick.full.style.display = isFull ? '' : 'none';
+  const back = pick.rejoinMode;
+  pick.form.style.display = !back && !isFull ? 'flex' : 'none';
+  pick.full.style.display = !back && isFull ? '' : 'none';
+  pick.back.style.display = back ? 'flex' : 'none';
+  pick.toggle.textContent = back ? 'Нет, мы новая команда' : 'Мы уже в игре — вернуться в команду';
+  pick.title.textContent = back ? 'Вернуться в команду' : 'Как назовётесь?';
   const free = TEAM_NAMES.filter((n) => !nameTaken(teams, n));
   pick.ideas.textContent = '';
   free.forEach((n) => pick.ideas.appendChild(el('button', {
@@ -142,10 +189,7 @@ function refreshPick() {
 function screenPick() {
   if (!pick) buildPick();
   refreshPick();
-  return [
-    el('div', { class: 'play-head' }, [el('div', { class: 'nm', text: 'Как назовётесь?' })]),
-    pick.node
-  ];
+  return [pick.headNode, pick.node];
 }
 
 // ---------- ответы и ставки ----------
@@ -179,14 +223,21 @@ async function sendBet(step, value) {
 function head(t) {
   return el('div', { class: 'play-head' }, [
     el('div', { class: 'nm', text: t.name }),
+    t.code ? el('div', { class: 'code', text: 'код ' + t.code }) : null,
     el('div', { class: 'sc', text: t.score + ' б.' })
   ]);
 }
 
 function bodyLobby() {
+  const t = me();
   return [
     el('div', { class: 'play-ctx', text: 'ВЫ В ИГРЕ' }),
     el('div', { class: 'big-msg', text: 'Ждём остальные команды' }),
+    t.code ? el('div', { class: 'code-box' }, [
+      el('div', { class: 'play-ctx', text: 'КОД КОМАНДЫ' }),
+      el('b', { text: t.code }),
+      el('div', { class: 'play-ctx', style: 'letter-spacing:0', text: 'Если телефон сядет — на другом телефоне откройте ту же ссылку, нажмите «Мы уже в игре» и введите этот код.' })
+    ]) : null,
     el('div', { class: 'play-ctx', text: 'СМОТРИТЕ НА БОЛЬШОЙ ЭКРАН' })
   ];
 }

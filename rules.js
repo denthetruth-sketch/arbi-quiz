@@ -163,3 +163,23 @@ export function nameTaken(teams, name) {
   const n = norm(name);
   return Object.values(teams || {}).some((t) => norm(t && t.name) === n);
 }
+
+// ---------- код команды ----------
+// Четыре цифры: по ним капитан возвращается в свою команду с другого телефона
+// или после того, как браузер забыл команду.
+
+export function makeTeamCode(teams, rand = Math.random) {
+  const used = new Set(Object.values(teams || {}).map((t) => t && t.code));
+  for (let i = 0; i < 1000; i++) {
+    const c = String(1000 + Math.floor(rand() * 9000));
+    if (!used.has(c)) return c;
+  }
+  return null;
+}
+
+export function findTeamByCode(teams, code) {
+  const c = String(code || '').replace(/\D/g, '');
+  if (c.length !== 4) return null;
+  const hit = Object.entries(teams || {}).find(([, t]) => t && t.code === c);
+  return hit ? hit[0] : null;
+}
