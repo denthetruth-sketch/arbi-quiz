@@ -16,6 +16,8 @@ let myId = null;
 let clockNode = null;
 let busy = false;
 let loaded = false; // пришёл ли хоть один ответ от базы
+let lastSig = null;  // что было на экране в прошлый раз
+const drafts = {};   // недоотправленный текст в полях ответа и ставки
 
 try { myId = localStorage.getItem(STORE_KEY); } catch (e) { myId = null; }
 
@@ -280,12 +282,14 @@ function bodyBet(step) {
       out.push(el('div', { class: 'play-ctx', text: 'ИГРАЕМ НА ИНТЕРЕС' }));
       return out;
     }
-    const input = el('input', { type: 'number', min: String(r.betMin), max: String(max), value: String(mine || r.betMin) });
+    const dk = 'bet:' + key;
+    const input = el('input', { type: 'number', min: String(r.betMin), max: String(max), value: drafts[dk] != null ? drafts[dk] : String(mine || r.betMin) });
+    input.addEventListener('input', () => { drafts[dk] = input.value; });
     out.push(el('div', { class: 'big-msg', text: 'Ставка: от 1 до ' + max }));
     out.push(input);
     out.push(el('button', {
-      class: 'btn primary wide big',
-      text: 'Поставить',
+      class: mine != null ? 'btn ghost wide big' : 'btn primary wide big',
+      text: mine != null ? 'Изменить ставку' : 'Поставить',
       disabled: st.locked ? 'disabled' : null,
       onclick: () => sendBet(step, clampBet(r, input.value, max))
     }));
@@ -319,14 +323,18 @@ function bodyQuestion(step) {
     ));
     out.push(el('div', { class: 'play-ctx', text: 'ТЕКСТ ВАРИАНТОВ — НА БОЛЬШОМ ЭКРАНЕ' }));
   } else {
+    const dk = 'ans:' + key;
+    const val = drafts[dk] != null ? drafts[dk] : (mine != null ? String(mine) : '');
     const input = q.freeText
-      ? el('input', { type: 'text', value: mine != null ? String(mine) : '', placeholder: 'например: 2 недели' })
-      : el('input', { type: 'number', step: 'any', value: mine != null ? String(mine) : '', placeholder: 'число' });
+      ? el('input', { type: 'text', value: val, placeholder: 'например: 2 недели' })
+      : el('input', { type: 'number', step: 'any', value: val, placeholder: 'число' });
+    input.addEventListener('input', () => { drafts[dk] = input.value; });
     out.push(el('div', { class: 'play-ctx', text: (q.inputLabel || 'ОТВЕТ') + (q.unit ? ', ' + q.unit : '') }));
     out.push(input);
+    // ответ можно поправить, пока приём открыт — как и с кнопками A–D
     out.push(el('button', {
-      class: 'btn primary wide big',
-      text: 'Ответить',
+      class: mine != null ? 'btn ghost wide big' : 'btn primary wide big',
+      text: mine != null ? 'Изменить ответ' : 'Ответить',
       disabled: open ? null : 'disabled',
       onclick: () => {
         const v = q.freeText ? input.value.trim() : input.value;
@@ -388,10 +396,27 @@ function bodyEnd() {
 
 // ---------- сборка ----------
 
+// Телефону важны только своя команда и общий ход игры. Ответы и ставки других команд
+// приходят постоянно — если перерисовывать экран на каждый, у капитана посреди набора
+// пропадает фокус и закрывается клавиатура.
+function screenSig(st, step) {
+  if (!loaded || !me()) return null;
+  const key = step.ri != null ? keyOf(step) : null;
+  const mine = (kind) => (key ? (((data[kind] || {})[key] || {})[myId]) : null);
+  return JSON.stringify([
+    myId, me(), st.stepIdx || 0, !!st.locked, st.timerEnd || 0,
+    mine('answers'), mine('bets'),
+    data.lastKey || null, (data.lastVerdicts || {})[myId], (data.lastDeltas || {})[myId]
+  ]);
+}
+
 function render() {
-  clockNode = null;
   const st = data.state || {};
   const step = stepAt(st.stepIdx || 0);
+  const sig = screenSig(st, step);
+  if (sig != null && sig === lastSig) return;
+  lastSig = sig;
+  clockNode = null;
 
   let nodes;
   if (!loaded) {

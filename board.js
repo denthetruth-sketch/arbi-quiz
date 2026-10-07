@@ -159,7 +159,7 @@ function screenLobby() {
   }
 
   const qrImg = el('img', { alt: '', src: './qr.png' });
-  qrImg.onerror = () => { qrImg.style.display = 'none'; };
+  qrImg.onerror = () => { qrImg.replaceWith(el('div', { class: 'qr-url', text: joinUrl })); };
 
   return [
     head('ФИНАНСОВЫЙ КВИЗ'),
@@ -169,7 +169,7 @@ function screenLobby() {
         el('p', { class: 'lobby-sub', text: QUIZ.subtitle })
       ]),
       el('div', { class: 'lobby-right' }, [
-        el('div', { class: 'qr-card' }, [qrImg, el('div', { class: 'qr-url', text: joinUrl })]),
+        el('div', { class: 'qr-card' }, [qrImg]),
         el('div', { class: 'join-card' }, [
           el('div', { class: 'join-head' }, [
             el('div', { class: 'lbl', text: 'ПОДКЛЮЧИЛИСЬ' }),
@@ -328,13 +328,10 @@ function screenReveal(step) {
 
 function screenScoreboard(step) {
   const list = ranked(data.teams);
-  const deltas = data.lastDeltas || {};
   const rows = list.map((t, i) => {
-    const d = deltas[t.id];
     return el('div', { class: 'srow' + (i === 0 ? ' lead' : '') }, [
       el('div', { class: 'pos', text: String(i + 1) }),
       el('div', { class: 'nm', text: t.name }),
-      d ? el('div', { class: 'dl ' + (d > 0 ? 'up' : 'down'), text: (d > 0 ? '+' : '') + d }) : null,
       el('div', { class: 'sc', text: String(t.score) })
     ]);
   });
