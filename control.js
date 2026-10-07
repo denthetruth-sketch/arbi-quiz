@@ -64,6 +64,14 @@ function go(delta) {
   update(R('state'), { stepIdx: next, timerEnd: null, timerDur: null, locked: false });
 }
 
+// На стартовый экран (QR и список команд) — для всех экранов сразу.
+// Счёт и команды не трогаются; обнулить их — «Сбросить игру».
+function goHome() {
+  if ((state().stepIdx || 0) === 0) return;
+  if (!confirm('Вернуть все экраны в главное меню? Счёт и команды останутся.')) return;
+  update(R('state'), { stepIdx: 0, timerEnd: null, timerDur: null, locked: false });
+}
+
 function startTimer() {
   const step = curStep();
   const r = roundOf(step);
@@ -351,6 +359,13 @@ function render() {
     blockLinks(),
     el('div', { class: 'warnbox' }, [
       'Начисление баллов происходит только отсюда. Если что-то посчиталось не так — правьте счёт руками в блоке «Команды и счёт», это надёжнее, чем пересчитывать раунд.'
+    ]),
+    el('div', { class: 'row', style: 'margin-top:28px;justify-content:center' }, [
+      el('button', {
+        class: 'btn ghost', text: 'В главное меню',
+        disabled: (state().stepIdx || 0) === 0 ? 'disabled' : null,
+        onclick: goHome
+      })
     ])
   ];
 
