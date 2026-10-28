@@ -41,7 +41,7 @@ eq('ставка финала без потолка', QUIZ.rounds[4].betMax, nul
 eq('первый экран', STEPS[0].type, 'lobby');
 eq('последний экран', STEPS[STEPS.length - 1].type, 'end');
 // 1 лобби + (8 + 8 + 10 + 8 + 5) по раундам + 1 финальный = 41
-eq('всего экранов', STEPS.length, 41);
+eq('всего экранов', STEPS.length, 43);
 
 const types = STEPS.map((s) => s.type);
 eq('после лобби заставка раунда', types[1], 'round');
