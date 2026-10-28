@@ -155,7 +155,7 @@ body.board { overflow: hidden; }
 }
 .answer .body { font-size: calc(2.375rem * var(--fit, 1)); font-weight: 700; line-height: 1.3; }
 .explain-lbl { font-size: .75rem; font-weight: 600; letter-spacing: .14em; color: var(--dim); }
-.explain { margin: 0; font-size: 1.1875rem; line-height: 1.5; color: #D8D8D8; }
+.explain { margin: 0; font-size: 1.1875rem; line-height: 1.5; color: #D8D8D8; white-space: pre-line; }
 .source { font-size: .8125rem; font-style: italic; color: #5A5A5A; }
 
 /* табло счёта */

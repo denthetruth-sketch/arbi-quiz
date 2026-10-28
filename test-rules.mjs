@@ -84,27 +84,29 @@ eq('mc: раунд 3 даёт 3', deltaFor(QUIZ.rounds[2], true, null), 3);
 
 // ---------- раунд 4: ближе всех, не превысив ----------
 const r4 = QUIZ.rounds[3];
-const q4 = r4.questions[0]; // 6.5
-v = autoVerdicts(r4, q4, ['a', 'b', 'c', 'd'], { a: 5, b: 6.4, c: 7, d: 3 });
-eq('ставка: побеждает 6.4', [v.a, v.b, v.c, v.d], [false, true, false, false]);
+const q4 = r4.questions[0]; // 14
+eq('r4q1: верный ответ 14', q4.correctValue, 14);
+v = autoVerdicts(r4, q4, ['a', 'b', 'c', 'd'], { a: 12, b: '13,9%', c: 15, d: 3 });
+eq('ставка: побеждает 13,9', [v.a, v.b, v.c, v.d], [false, true, false, false]);
 
-v = autoVerdicts(r4, q4, ['a', 'b'], { a: 6.5, b: 6.4 });
+v = autoVerdicts(r4, q4, ['a', 'b'], { a: 14, b: 13.9 });
 eq('ставка: точное попадание', [v.a, v.b], [true, false]);
 
-v = autoVerdicts(r4, q4, ['a', 'b'], { a: 10, b: 8 });
+v = autoVerdicts(r4, q4, ['a', 'b'], { a: 20, b: 18 });
 eq('ставка: все превысили — никто', [v.a, v.b], [false, false]);
 
-v = autoVerdicts(r4, q4, ['a', 'b'], { a: 6, b: 6 });
+v = autoVerdicts(r4, q4, ['a', 'b'], { a: 13, b: 13 });
 eq('ставка: ничья засчитывается обоим', [v.a, v.b], [true, true]);
 
 eq('ставка 3 выигрыш', deltaFor(r4, true, 3), 6);
 eq('ставка 3 проигрыш', deltaFor(r4, false, 3), -3);
 eq('ставка 1 выигрыш', deltaFor(r4, true, 1), 2);
 
-// второй вопрос раунда 4 — только вручную
+// второй вопрос раунда 4 — тоже «ближе всех, не превысив», ответ 43
 const q4b = r4.questions[1];
-v = autoVerdicts(r4, q4b, ['a', 'b'], { a: '2 недели', b: '3 дня' });
-eq('диапазон: автомат никого не засчитывает', [v.a, v.b], [false, false]);
+eq('r4q2: верный ответ 43', q4b.correctValue, 43);
+v = autoVerdicts(r4, q4b, ['a', 'b', 'c'], { a: 40, b: '50%', c: 30 });
+eq('r4q2: побеждает 40', [v.a, v.b, v.c], [true, false, false]);
 
 // ---------- финал ----------
 const r5 = QUIZ.rounds[4];
