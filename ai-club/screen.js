@@ -84,7 +84,7 @@ function buildTalk(s) {
       el('div', { class: 't-num', text: String(s.n).padStart(2, '0') }),
       el('div', { class: 't-body' }, [
         el('div', { class: 't-topic', text: s.topic }),
-        el('h1', { class: 't-title', text: s.title }),
+        el('h1', { class: 't-title' + (s.title.length > 50 ? ' long' : ''), text: s.title }),
         el('div', { class: 't-speaker' }, [
           el('div', { class: 't-ava', text: initials || '•' }),
           el('div', {}, [

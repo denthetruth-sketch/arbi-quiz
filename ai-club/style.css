@@ -182,6 +182,7 @@ body.screen:not(.awake) { cursor: none; }
 .t-body { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .t-topic { font-family: var(--display); font-weight: 500; font-size: 1.4rem; letter-spacing: .14em; text-transform: uppercase; color: var(--mint); }
 .t-title { margin: 0; font-family: var(--display); font-weight: 700; font-size: 4.6rem; line-height: 1.1; letter-spacing: -.015em; text-wrap: balance; }
+.t-title.long { font-size: 3.7rem; }
 .t-speaker { display: flex; align-items: center; gap: 1.4rem; margin-top: 1rem; }
 .t-ava {
   width: 5.2rem; height: 5.2rem; border-radius: 50%; flex-shrink: 0;
