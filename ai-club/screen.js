@@ -2,7 +2,7 @@
 
 import { EVENT, SLIDES, QUESTION_COUNT, TALK_COUNT } from './config.js';
 import { openStore, DEMO, ROOM, el, plural, clampSlide } from './store.js';
-import { visible, hiddenCount, people, cloudWords, percentStats } from './tally.js';
+import { visible, hiddenCount, people, cloudWords, percentStats, choiceStats } from './tally.js';
 
 const root = document.getElementById('root');
 const offlineBar = document.getElementById('offline');
@@ -58,7 +58,7 @@ function header(right) {
 
 function progress() {
   return el('div', { class: 's-progress' }, SLIDES.map((s, i) =>
-    el('i', { class: (s.type === 'talk' ? 'talk' : 'q') + (i === slide ? ' on' : i < slide ? ' done' : '') })
+    el('i', { class: (s.type === 'question' ? 'q' : 'talk') + (i === slide ? ' on' : i < slide ? ' done' : '') })
   ));
 }
 
@@ -69,11 +69,25 @@ function build() {
   refs = {};
   shownAvg = 0;
   root.replaceChildren();
-  root.className = 's-root ' + (s.type === 'talk' ? 'is-talk' : 'is-question kind-' + s.kind);
+  root.className = 's-root ' + (s.type === 'question' ? 'is-question kind-' + s.kind : 'is-' + s.type);
   if (s.type === 'talk') buildTalk(s);
+  else if (s.type === 'quote') buildQuote(s);
   else buildQuestion(s);
   builtSlide = slide;
   update();
+  updateMenu();
+}
+
+function buildQuote(s) {
+  root.append(
+    header(''),
+    el('main', { class: 'z-main' }, [
+      el('div', { class: 'z-mark', text: '“' }),
+      el('blockquote', { class: 'z-text' + (s.text.length > 70 ? ' long' : ''), text: s.text }),
+      el('div', { class: 'z-author' }, [el('span', { class: 'z-dash' }), s.author])
+    ]),
+    el('footer', { class: 's-foot' }, [progress()])
+  );
 }
 
 function buildTalk(s) {
@@ -133,7 +147,7 @@ function update() {
   const s = SLIDES[slide];
   if (s.type !== 'question' || !refs.stage) return;
   const bucket = answers[s.id] || {};
-  const n = s.kind === 'percent' ? visible(bucket).length : people(bucket);
+  const n = (s.kind === 'percent' || s.kind === 'choice' || s.kind === 'scale') ? visible(bucket).length : people(bucket);
   if (refs.count.textContent !== String(n)) {
     refs.count.textContent = String(n);
     refs.count.classList.remove('bump');
@@ -146,6 +160,8 @@ function update() {
   seen[s.id] = seen[s.id] || new Set();
 
   if (s.kind === 'percent') renderPercent(bucket);
+  else if (s.kind === 'choice') renderChoice(s, bucket);
+  else if (s.kind === 'scale') renderScale(s, bucket);
   else if (visible(bucket).length === 0) renderEmpty();
   else if (s.kind === 'cloud') renderCloud(s, bucket, firstPaint);
   else renderCards(s, bucket, firstPaint);
@@ -175,7 +191,7 @@ function hideKeys(qid, keys) {
 }
 
 function renderCloud(s, bucket, firstPaint) {
-  const words = cloudWords(bucket);
+  const words = cloudWords(bucket, !s.single);
   const max = words[0] ? words[0].count : 1;
   // крупные слова — в середину, мелкие — по краям
   const arranged = [];
@@ -233,6 +249,68 @@ function fit(maxRem, minRem) {
     inner.style.fontSize = f * base + 'px';
   }
   inner.classList.remove('measuring');
+}
+
+// выбор: горизонтальные столбики в порядке вариантов, лидер подсвечен
+function renderChoice(s, bucket) {
+  const { n, counts } = choiceStats(bucket, s.options.length);
+  if (!refs.rows) {
+    refs.rows = s.options.map((label, i) => {
+      const fill = el('i', { style: '--c:' + PALETTE[i % PALETTE.length] });
+      const num = el('b');
+      const pct = el('span', { class: 'c-pct' });
+      const row = el('div', { class: 'c-row' }, [
+        el('div', { class: 'c-label', text: label }),
+        el('div', { class: 'c-track' }, [fill]),
+        el('div', { class: 'c-num' }, [num, pct])
+      ]);
+      return { row, fill, num, pct };
+    });
+    refs.inner.className = 'q-inner choice';
+    refs.inner.style.fontSize = '';
+    refs.inner.replaceChildren(...refs.rows.map((r) => r.row));
+  }
+  const top = Math.max(1, ...counts);
+  const lead = Math.max(...counts);
+  refs.rows.forEach((r, i) => {
+    r.fill.style.width = (counts[i] / top * 100) + '%';
+    r.num.textContent = String(counts[i]);
+    r.pct.textContent = n ? Math.round(counts[i] / n * 100) + '%' : '';
+    r.row.classList.toggle('lead', lead > 0 && counts[i] === lead);
+    r.row.classList.toggle('zero', counts[i] === 0);
+  });
+}
+
+// шкала: ступени слева направо, высота — сколько человек, внизу метка «зал в среднем»
+function renderScale(s, bucket) {
+  const k = s.options.length;
+  const { n, counts, avg } = choiceStats(bucket, k);
+  if (!refs.steps) {
+    refs.steps = s.options.map((label, i) => {
+      const fill = el('i', { style: 'opacity:' + (0.55 + 0.45 * i / (k - 1)).toFixed(2) });
+      const num = el('b');
+      const col = el('div', { class: 'sc-col' }, [
+        el('div', { class: 'sc-bar' }, [num, fill]),
+        el('div', { class: 'sc-step', text: String(i + 1) }),
+        el('div', { class: 'sc-label', text: label })
+      ]);
+      return { col, fill, num };
+    });
+    refs.pin = el('div', { class: 'sc-pin' }, [el('span', { text: 'зал в среднем' })]);
+    refs.inner.className = 'q-inner scale';
+    refs.inner.style.fontSize = '';
+    refs.inner.replaceChildren(
+      el('div', { class: 'sc-cols' }, refs.steps.map((x) => x.col)),
+      el('div', { class: 'sc-axis' }, [el('div', { class: 'sc-line' }), refs.pin])
+    );
+  }
+  const top = Math.max(1, ...counts);
+  refs.steps.forEach((x, i) => {
+    x.fill.style.height = (counts[i] / top * 100) + '%';
+    x.num.textContent = counts[i] ? String(counts[i]) : '';
+  });
+  refs.pin.hidden = !n;
+  refs.pin.style.left = ((avg + 0.5) / k * 100) + '%';
 }
 
 function renderPercent(bucket) {

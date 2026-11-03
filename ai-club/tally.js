@@ -34,10 +34,10 @@ export function splitParts(text) {
 }
 
 // облако: одинаковые ответы склеиваются, показывается самое частое написание
-export function cloudWords(bucket) {
+export function cloudWords(bucket, split = true) {
   const groups = new Map();
   visible(bucket).forEach((a) => {
-    splitParts(a.t).forEach((part) => {
+    (split ? splitParts(a.t) : [String(a.t || '').replace(/\s+/g, ' ').trim()].filter(Boolean)).forEach((part) => {
       const k = normalize(part);
       if (!groups.has(k)) groups.set(k, { key: k, count: 0, forms: new Map(), answerKeys: new Set(), first: a.at || 0 });
       const g = groups.get(k);
@@ -64,4 +64,19 @@ export function percentStats(bucket) {
   const n = vals.length;
   const avg = n ? vals.reduce((s, v) => s + v, 0) / n : 0;
   return { n, avg, bins };
+}
+
+// выбор варианта: сколько за каждый и средняя ступень (для шкалы)
+export function choiceStats(bucket, k) {
+  const counts = new Array(k).fill(0);
+  let sum = 0;
+  let n = 0;
+  visible(bucket).forEach((a) => {
+    const v = Number(a.v);
+    if (!Number.isInteger(v) || v < 0 || v >= k) return;
+    counts[v] += 1;
+    sum += v;
+    n += 1;
+  });
+  return { n, counts, avg: n ? sum / n : 0 };
 }

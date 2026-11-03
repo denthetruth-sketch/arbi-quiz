@@ -50,8 +50,9 @@ async function firebaseStore() {
     addText(qid, text, device) {
       return push(r('answers/' + qid), { t: text, d: device, at: serverTimestamp() });
     },
-    setNumber(qid, v, device) {
-      return set(r('answers/' + qid + '/' + device), { v, d: device, at: serverTimestamp() });
+    // один ответ с телефона: ключ — сам телефон, повторная отправка заменяет ответ
+    setOwn(qid, data, device) {
+      return set(r('answers/' + qid + '/' + device), { ...data, d: device, at: serverTimestamp() });
     },
     setHidden(qid, key, hidden) { return set(r('answers/' + qid + '/' + key + '/hidden'), hidden ? true : null); },
     clear(qid) { return remove(r('answers/' + qid)); }
@@ -61,6 +62,7 @@ async function firebaseStore() {
 // ---------- демо ----------
 
 const DEMO_TEXT = {
+  name: ['Аня', 'Денис', 'Саша', 'Мария', 'Алексей', 'Катя', 'Дима', 'Юля', 'Иван', 'Оля', 'Саша', 'Аня', 'Максим', 'Настя', 'Сергей', 'Лена'],
   sources: ['CRM', 'amoCRM', 'Bitrix24', 'Google Analytics', 'Яндекс Метрика', 'Excel', 'Google Таблицы',
     'CRM', 'Рекламный кабинет Meta', 'опросы клиентов', 'CRM', 'Telegram-бот', '1С', 'Power BI', 'amoCRM',
     'Google Analytics', 'звонки', 'CRM', 'Notion', 'руками', 'Яндекс Метрика', 'POS-система', 'CRM', 'Booking.com'],
@@ -95,6 +97,13 @@ function demoStore() {
       if (q.kind === 'percent') {
         const v = Math.max(0, Math.min(100, Math.round((Math.random() * 0.8 + Math.random() * 0.4) * 60 / 5) * 5));
         answers[qid]['p' + (++seq)] = { v, d: 'p' + seq, at: Date.now() };
+      } else if (q.kind === 'choice' || q.kind === 'scale') {
+        const k = q.options.length;
+        const v = Math.min(k - 1, Math.floor(Math.pow(Math.random(), q.kind === 'scale' ? 1.3 : 1.6) * k));
+        answers[qid]['p' + (++seq)] = { v, d: 'p' + seq, at: Date.now() };
+      } else if (q.single) {
+        const list = DEMO_TEXT[qid];
+        answers[qid]['p' + (++seq)] = { t: list[seq % list.length], d: 'p' + seq, at: Date.now() };
       } else {
         const list = DEMO_TEXT[qid];
         const pick = qid === 'ideas' ? list[seq % list.length] : list[Math.floor(Math.random() * list.length)];
@@ -102,6 +111,9 @@ function demoStore() {
       }
     }
   }
+  addDemo('name', 14);
+  addDemo('field', 19);
+  addDemo('stage', 17);
   addDemo('sources', 18);
   addDemo('ideas', 6);
   addDemo('delegate', 21);
@@ -117,7 +129,7 @@ function demoStore() {
     setSlide(n) { slide = n; slideCbs.forEach((cb) => cb(slide)); return Promise.resolve(); },
     onAnswers(cb) { answerCbs.push(cb); cb(JSON.parse(JSON.stringify(answers))); },
     addText(qid, t, d) { (answers[qid] = answers[qid] || {})[key()] = { t, d, at: Date.now() }; fire(); return Promise.resolve(); },
-    setNumber(qid, v, d) { (answers[qid] = answers[qid] || {})[d] = { v, d, at: Date.now() }; fire(); return Promise.resolve(); },
+    setOwn(qid, data, d) { (answers[qid] = answers[qid] || {})[d] = { ...data, d, at: Date.now() }; fire(); return Promise.resolve(); },
     setHidden(qid, k, h) { if (answers[qid] && answers[qid][k]) { if (h) answers[qid][k].hidden = true; else delete answers[qid][k].hidden; } fire(); return Promise.resolve(); },
     clear(qid) { delete answers[qid]; fire(); return Promise.resolve(); }
   };

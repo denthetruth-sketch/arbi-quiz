@@ -33,9 +33,20 @@ function render() {
   const s = SLIDES[slide];
   root.replaceChildren(top());
   if (s.type === 'talk') renderWait(s);
+  else if (s.type === 'quote') renderQuote();
   else if (s.kind === 'percent') renderPercent(s);
+  else if (s.kind === 'choice' || s.kind === 'scale') renderChoice(s);
   else renderText(s);
   window.scrollTo(0, 0);
+}
+
+function renderQuote() {
+  const started = SLIDES.slice(0, slide).some((x) => x.type === 'question');
+  root.append(el('div', { class: 'ph-card ph-wait' }, [
+    el('div', { class: 'ph-label', text: started ? 'Небольшая пауза' : 'Добро пожаловать' }),
+    el('h1', { class: 'ph-talk', text: started ? 'Смотрите на экран' : 'Скоро начнём' }),
+    el('div', { class: 'ph-note', text: 'Следующий вопрос появится здесь сам — страницу можно не закрывать.' })
+  ]));
 }
 
 function renderWait(s) {
@@ -64,7 +75,7 @@ function renderText(s) {
   const input = el('textarea', {
     class: 'ph-input',
     maxlength: String(s.maxLen),
-    rows: s.maxLen > 60 ? '4' : '2',
+    rows: s.maxLen > 60 ? '4' : s.maxLen > 24 ? '2' : '1',
     placeholder: s.placeholder,
     enterkeyhint: 'send'
   });
@@ -76,7 +87,7 @@ function renderText(s) {
   function paintMine() {
     const l = mine[s.id] || [];
     mineBox.replaceChildren(...(l.length ? [
-      el('div', { class: 'ph-mine-t', text: l.length === 1 ? 'Ваш ответ уже на экране' : 'Ваши ответы на экране' }),
+      el('div', { class: 'ph-mine-t', text: l.length === 1 ? 'Ваш ответ на экране' : 'Ваши ответы на экране' }),
       ...l.map((t) => el('div', { class: 'ph-mine-i', text: t }))
     ] : []));
   }
@@ -97,17 +108,19 @@ function renderText(s) {
     btn.textContent = 'Отправляем…';
     status.className = 'ph-status';
     status.textContent = '';
-    const job = sendWithTimeout(store.addText(s.id, text, DEVICE));
+    const job = sendWithTimeout(s.single ? store.setOwn(s.id, { t: text }, DEVICE) : store.addText(s.id, text, DEVICE));
     job.onSlow(() => { status.textContent = 'Интернет медленный — ответ уйдёт, как только появится связь.'; });
     job.promise.then(() => {
       job.done();
-      mine[s.id] = [...(mine[s.id] || []), text];
+      mine[s.id] = s.single ? [text] : [...(mine[s.id] || []), text];
       saveMine(mine);
       input.value = '';
       counter.textContent = '0 / ' + s.maxLen;
-      btn.textContent = 'Отправить ещё';
+      btn.textContent = s.single ? 'Изменить' : 'Отправить ещё';
       status.className = 'ph-status ok';
-      status.textContent = 'Отправлено — смотрите на экран! Можно добавить ещё.';
+      status.textContent = s.single
+        ? 'Привет, ' + text + '! Смотрите на экран.'
+        : 'Отправлено — смотрите на экран! Можно добавить ещё.';
       paintMine();
     }).catch((err) => {
       job.done();
@@ -126,8 +139,58 @@ function renderText(s) {
     btn,
     status
   ]), mineBox);
-  if (list.length) btn.textContent = 'Отправить ещё';
+  if (list.length) btn.textContent = s.single ? 'Изменить' : 'Отправить ещё';
   paintMine();
+}
+
+// выбор варианта: нажал — сразу отправилось, можно передумать
+function renderChoice(s) {
+  let current = typeof mine[s.id] === 'number' ? mine[s.id] : null;
+  const status = el('div', { class: 'ph-status' + (current != null ? ' ok' : ''), text: current != null ? 'Ваш ответ на экране. Можно поменять.' : '' });
+  let busy = false;
+  const buttons = s.options.map((label, i) => el('button', {
+    class: 'ph-opt' + (s.kind === 'scale' ? ' step' : '') + (i === current ? ' on' : ''),
+    onclick: () => pick(i)
+  }, [s.kind === 'scale' ? el('span', { class: 'ph-opt-n', text: String(i + 1) }) : null, el('span', { text: label })]));
+
+  function paint() { buttons.forEach((b, i) => b.classList.toggle('on', i === current)); }
+
+  function pick(i) {
+    if (busy) return;
+    busy = true;
+    const prev = current;
+    current = i;
+    paint();
+    buttons.forEach((b) => { b.disabled = true; });
+    status.className = 'ph-status';
+    status.textContent = 'Отправляем…';
+    const job = sendWithTimeout(store.setOwn(s.id, { v: i }, DEVICE));
+    job.onSlow(() => { status.textContent = 'Интернет медленный — ответ уйдёт, как только появится связь.'; });
+    job.promise.then(() => {
+      job.done();
+      mine[s.id] = i;
+      saveMine(mine);
+      status.className = 'ph-status ok';
+      status.textContent = 'Принято: «' + s.options[i] + '». Смотрите на экран — можно поменять.';
+    }).catch((err) => {
+      job.done();
+      current = prev;
+      paint();
+      status.className = 'ph-status err';
+      status.textContent = 'Не отправилось. Попробуйте ещё раз.' + (err && err.code ? ' (' + err.code + ')' : '');
+    }).finally(() => {
+      busy = false;
+      buttons.forEach((b) => { b.disabled = false; });
+    });
+  }
+
+  root.append(el('div', { class: 'ph-card' }, [
+    el('div', { class: 'ph-label', text: 'Вопрос ' + s.n }),
+    el('h1', { class: 'ph-q', text: s.title }),
+    el('div', { class: 'ph-hint', text: s.hint }),
+    el('div', { class: 'ph-opts' + (s.kind === 'scale' ? ' scale' : '') }, buttons),
+    status
+  ]));
 }
 
 function renderPercent(s) {
@@ -153,7 +216,7 @@ function renderPercent(s) {
     btn.disabled = true;
     btn.textContent = 'Отправляем…';
     const v = value;
-    const job = sendWithTimeout(store.setNumber(s.id, v, DEVICE));
+    const job = sendWithTimeout(store.setOwn(s.id, { v }, DEVICE));
     job.onSlow(() => { status.className = 'ph-status'; status.textContent = 'Интернет медленный — ответ уйдёт, как только появится связь.'; });
     job.promise.then(() => {
       job.done();
