@@ -120,7 +120,6 @@ function buildQuestion(s) {
           el('div', { class: 'q-scan-t', text: 'Наведите камеру' }),
           el('div', { class: 'q-scan-s', text: 'и ответьте с телефона' })
         ]),
-        el('div', { class: 'q-url', text: url.replace(/^https?:\/\//, '') }),
         el('div', { class: 'q-count' }, [refs.count, refs.countLabel])
       ])
     ]),

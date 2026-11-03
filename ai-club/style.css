@@ -105,7 +105,6 @@ body.screen:not(.awake) { cursor: none; }
 .q-scan { text-align: center; }
 .q-scan-t { font-family: var(--display); font-weight: 700; font-size: 1.7rem; }
 .q-scan-s { color: var(--text-2); font-size: 1.35rem; margin-top: .25rem; }
-.q-url { text-align: center; color: var(--dim); font-size: 1rem; word-break: break-all; }
 .q-count {
   margin-top: auto; text-align: center;
   border-radius: 1.6rem; padding: 1.4rem 1rem 1.2rem;
