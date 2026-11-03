@@ -42,6 +42,15 @@ function render() {
 
 function renderQuote() {
   const started = SLIDES.slice(0, slide).some((x) => x.type === 'question');
+  const more = SLIDES.slice(slide + 1).some((x) => x.type === 'question');
+  if (started && !more) {
+    root.append(el('div', { class: 'ph-card ph-wait' }, [
+      el('div', { class: 'ph-label', text: 'Это всё' }),
+      el('h1', { class: 'ph-talk', text: 'Спасибо, что были с нами!' }),
+      el('div', { class: 'ph-note', text: 'Вопросов больше не будет. Смотрите на экран.' })
+    ]));
+    return;
+  }
   root.append(el('div', { class: 'ph-card ph-wait' }, [
     el('div', { class: 'ph-label', text: started ? 'Небольшая пауза' : 'Добро пожаловать' }),
     el('h1', { class: 'ph-talk', text: started ? 'Смотрите на экран' : 'Скоро начнём' }),

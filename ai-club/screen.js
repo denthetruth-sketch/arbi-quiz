@@ -81,10 +81,13 @@ function build() {
 function buildQuote(s) {
   root.append(
     header(''),
-    el('main', { class: 'z-main' }, [
+    el('main', { class: 'z-main' + (s.text.length > 130 ? ' xlong' : '') }, [
       el('div', { class: 'z-mark', text: '“' }),
-      el('blockquote', { class: 'z-text' + (s.text.length > 70 ? ' long' : ''), text: s.text }),
-      el('div', { class: 'z-author' }, [el('span', { class: 'z-dash' }), s.author])
+      el('blockquote', { class: 'z-text' + (s.text.length > 130 ? ' xlong' : s.text.length > 70 ? ' long' : ''), text: s.text }),
+      el('div', { class: 'z-author' }, [
+        el('span', { class: 'z-dash' }),
+        el('div', {}, [el('div', { text: s.author }), s.role ? el('div', { class: 'z-role', text: s.role }) : null])
+      ])
     ]),
     el('footer', { class: 's-foot' }, [progress()])
   );
