@@ -15,6 +15,7 @@ let builtSlide = -1;
 let seen = {};            // какие ответы уже показаны — новые появляются с анимацией
 let refs = {};
 let shownAvg = 0;
+let joined = 0;
 
 // ---------- адрес для телефонов ----------
 
@@ -72,10 +73,42 @@ function build() {
   root.className = 's-root ' + (s.type === 'question' ? 'is-question kind-' + s.kind : 'is-' + s.type);
   if (s.type === 'talk') buildTalk(s);
   else if (s.type === 'quote') buildQuote(s);
+  else if (s.type === 'join') buildJoin(s);
   else buildQuestion(s);
   builtSlide = slide;
   update();
   updateMenu();
+}
+
+function buildJoin(s) {
+  const url = answerUrl();
+  const qr = qrSvg(url);
+  refs.joined = el('div', { class: 'j-n', text: String(joined) });
+  refs.joinedLabel = el('div', { class: 'j-l' });
+  root.append(
+    header('ПОДКЛЮЧАЙТЕСЬ'),
+    el('main', { class: 'j-main' }, [
+      el('div', { class: 'j-qr' }, [qr || el('div', { class: 'q-qr-fallback', text: url })]),
+      el('div', { class: 'j-side' }, [
+        el('h1', { class: 'j-title', text: s.title }),
+        el('div', { class: 'j-hint', text: s.hint }),
+        el('div', { class: 'j-count' }, [refs.joined, refs.joinedLabel])
+      ])
+    ]),
+    el('footer', { class: 's-foot' }, [progress()])
+  );
+  paintJoined();
+}
+
+function paintJoined() {
+  if (!refs.joined) return;
+  if (refs.joined.textContent !== String(joined)) {
+    refs.joined.textContent = String(joined);
+    refs.joined.classList.remove('bump');
+    void refs.joined.offsetWidth;
+    refs.joined.classList.add('bump');
+  }
+  refs.joinedLabel.textContent = plural(joined, 'телефон уже подключился', 'телефона уже подключились', 'телефонов уже подключились');
 }
 
 function buildQuote(s) {
@@ -429,7 +462,8 @@ function updateMenu() {
   const h = isQ ? hiddenCount(answers[s.id]) : 0;
   menu.hidden.hidden = !h;
   menu.hidden.textContent = 'Вернуть скрытые (' + h + ')';
-  menu.clear.hidden = !isQ;
+  menu.clear.hidden = !isQ && s.type !== 'join';
+  menu.clear.textContent = s.type === 'join' ? 'Обнулить счётчик' : 'Очистить ответы';
 }
 
 function restoreHidden() {
@@ -439,6 +473,10 @@ function restoreHidden() {
 
 function clearAnswers() {
   const s = SLIDES[slide];
+  if (s.type === 'join') {
+    if (confirm('Обнулить счётчик подключившихся телефонов? Телефоны, которые уже открыты, заново не посчитаются, пока их не обновят.')) store.clearJoined();
+    return;
+  }
   if (!confirm('Удалить все ответы на вопрос «' + s.title + '»? Вернуть их будет нельзя.')) return;
   seen[s.id] = null;
   store.clear(s.id);
@@ -467,6 +505,7 @@ window.addEventListener('resize', () => { if (builtSlide >= 0) update(); });
     const n = clampSlide(v == null ? 0 : Number(v));
     if (n !== slide || builtSlide < 0) { slide = n; build(); }
   }, showDbError);
+  store.onJoined((n) => { joined = n; paintJoined(); });
   store.onAnswers((v) => {
     answers = v;
     if (builtSlide < 0) build(); else update();

@@ -55,7 +55,11 @@ async function firebaseStore() {
       return set(r('answers/' + qid + '/' + device), { ...data, d: device, at: serverTimestamp() });
     },
     setHidden(qid, key, hidden) { return set(r('answers/' + qid + '/' + key + '/hidden'), hidden ? true : null); },
-    clear(qid) { return remove(r('answers/' + qid)); }
+    clear(qid) { return remove(r('answers/' + qid)); },
+    // кто открыл страницу по QR — для счётчика «уже с нами»
+    join(device) { return set(r('joined/' + device), serverTimestamp()); },
+    onJoined(cb) { onValue(r('joined'), (s) => cb(Object.keys(s.val() || {}).length)); },
+    clearJoined() { return remove(r('joined')); }
   };
 }
 
@@ -131,7 +135,14 @@ function demoStore() {
     addText(qid, t, d) { (answers[qid] = answers[qid] || {})[key()] = { t, d, at: Date.now() }; fire(); return Promise.resolve(); },
     setOwn(qid, data, d) { (answers[qid] = answers[qid] || {})[d] = { ...data, d, at: Date.now() }; fire(); return Promise.resolve(); },
     setHidden(qid, k, h) { if (answers[qid] && answers[qid][k]) { if (h) answers[qid][k].hidden = true; else delete answers[qid][k].hidden; } fire(); return Promise.resolve(); },
-    clear(qid) { delete answers[qid]; fire(); return Promise.resolve(); }
+    clear(qid) { delete answers[qid]; fire(); return Promise.resolve(); },
+    join() { return Promise.resolve(); },
+    onJoined(cb) {
+      let n = 9;
+      cb(n);
+      setInterval(() => { if (SLIDES[slide] && SLIDES[slide].type === 'join') cb(n += 1 + Math.floor(Math.random() * 2)); }, 1800);
+    },
+    clearJoined() { return Promise.resolve(); }
   };
 }
 

@@ -34,10 +34,19 @@ function render() {
   root.replaceChildren(top());
   if (s.type === 'talk') renderWait(s);
   else if (s.type === 'quote') renderQuote();
+  else if (s.type === 'join') renderJoined();
   else if (s.kind === 'percent') renderPercent(s);
   else if (s.kind === 'choice' || s.kind === 'scale') renderChoice(s);
   else renderText(s);
   window.scrollTo(0, 0);
+}
+
+function renderJoined() {
+  root.append(el('div', { class: 'ph-card ph-wait' }, [
+    el('div', { class: 'ph-label', text: 'Вы подключились' }),
+    el('h1', { class: 'ph-talk', text: 'Отлично, вы с нами!' }),
+    el('div', { class: 'ph-note', text: 'Первый вопрос появится здесь сам — страницу можно не закрывать.' })
+  ]));
 }
 
 function renderQuote() {
@@ -267,6 +276,7 @@ function renderPercent(s) {
     return;
   }
   store.onConnection((ok) => { offlineBar.hidden = ok; });
+  store.join(DEVICE).catch(() => {});
   store.onSlide((v) => {
     const n = clampSlide(v == null ? 0 : Number(v));
     if (n === slide) return;
