@@ -153,19 +153,19 @@ body.screen:not(.awake) { cursor: none; }
 }
 
 /* проценты */
-.q-inner.percent { height: 100%; }
-.p-wrap { height: 100%; display: grid; grid-template-columns: auto 1fr; gap: 3.4rem; align-items: center; }
-.p-gauge { position: relative; height: 100%; max-height: 30rem; aspect-ratio: 1; }
+.q-inner.percent { height: 100%; container-type: size; }
+.p-wrap { height: 100%; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 2.6rem; align-items: center; }
+.p-gauge { position: relative; width: min(100%, 100cqh, 30rem); aspect-ratio: 1; justify-self: center; container-type: inline-size; }
 .p-ring { width: 100%; height: 100%; display: block; }
 .p-ring .arc { transition: stroke-dasharray .8s cubic-bezier(.3, .8, .3, 1); }
 .p-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.p-avg { font-family: var(--display); font-weight: 800; font-size: 7.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.p-avg-sub { color: var(--text-2); font-size: 1.35rem; margin-top: .8rem; max-width: 12em; }
+.p-avg { font-family: var(--display); font-weight: 800; font-size: 25cqi; line-height: 1; font-variant-numeric: tabular-nums; }
+.p-avg-sub { color: var(--text-2); font-size: max(.9rem, 5cqi); margin-top: .6em; max-width: 12em; line-height: 1.2; }
 .p-dist { height: 100%; max-height: 30rem; display: flex; flex-direction: column; gap: 1.2rem; min-width: 0; }
 .p-dist-t { color: var(--text-2); font-size: 1.2rem; }
 .p-bars { flex: 1; display: flex; gap: .7rem; align-items: stretch; }
 .p-col { flex: 1; display: flex; flex-direction: column; gap: .6rem; align-items: center; min-width: 0; }
-.p-col > span { color: var(--dim); font-size: .95rem; white-space: nowrap; }
+.p-col > span { color: var(--dim); font-size: 1rem; white-space: nowrap; }
 .p-track { flex: 1; width: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 .p-track i { display: block; width: 100%; border-radius: .5rem .5rem .2rem .2rem; background: linear-gradient(180deg, var(--violet), rgba(94, 224, 201, .55)); transition: height .7s cubic-bezier(.3, .8, .3, 1); min-height: 2px; }
 .p-track b { font-family: var(--display); font-size: 1.3rem; margin-bottom: .4rem; }

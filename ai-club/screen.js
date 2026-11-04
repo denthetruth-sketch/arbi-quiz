@@ -335,13 +335,13 @@ function renderPercent(bucket) {
     refs.barNodes = bins.map((_, i) => {
       const fill = el('i');
       const num = el('b');
-      const col = el('div', { class: 'p-col' }, [el('div', { class: 'p-track' }, [num, fill]), el('span', { text: (i * 10) + (i === 9 ? '–100' : '–' + (i * 10 + 9)) })]);
+      const col = el('div', { class: 'p-col' }, [el('div', { class: 'p-track' }, [num, fill]), el('span', { text: i === 9 ? '90+' : String(i * 10) })]);
       refs.bars.append(col);
       return { fill, num };
     });
     refs.pct = el('div', { class: 'p-wrap' }, [
       el('div', { class: 'p-gauge' }, [refs.ring, el('div', { class: 'p-center' }, [refs.avg, refs.avgSub])]),
-      el('div', { class: 'p-dist' }, [el('div', { class: 'p-dist-t', text: 'Как распределились ответы, %' }), refs.bars])
+      el('div', { class: 'p-dist' }, [el('div', { class: 'p-dist-t', text: 'Сколько человек в каждом десятке процентов' }), refs.bars])
     ]);
     refs.inner.className = 'q-inner percent';
     refs.inner.style.fontSize = '';
