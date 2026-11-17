@@ -231,17 +231,17 @@ body.screen:not(.awake) { cursor: none; }
 
 /* ----- цитата ----- */
 
-.z-main { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 9rem; position: relative; }
+.z-main { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 7rem; position: relative; }
 .z-mark {
   font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 16rem; line-height: .6; height: 7rem;
   background: linear-gradient(160deg, var(--violet), var(--mint)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .z-text {
-  margin: 0; max-width: 72rem;
+  margin: 0; max-width: 80rem;
   font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 500;
-  font-size: 5.4rem; line-height: 1.2; text-wrap: balance;
+  font-size: 4.7rem; line-height: 1.2; text-wrap: balance;
 }
-.z-text.long { font-size: 4.4rem; }
+.z-text.long { font-size: 4.1rem; }
 .z-text.xlong { font-size: 3.5rem; line-height: 1.25; max-width: 88rem; }
 .z-main.xlong { padding: 0 6rem; }
 .z-main.xlong .z-mark { font-size: 11rem; height: 4.5rem; }
