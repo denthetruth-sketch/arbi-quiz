@@ -6,13 +6,14 @@
 //
 // screen.html?demo — демо-режим без базы: выдуманные ответы, чтобы посмотреть, как выглядит.
 
-import { SLIDES } from './config.js';
+import { EVENT, SLIDES } from './config.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const params = new URLSearchParams(location.search);
 
 export const DEMO = params.has('demo');
-export const ROOM = (params.get('room') || 'main').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24) || 'main';
+export const DEFAULT_ROOM = EVENT.room || 'main';
+export const ROOM = (params.get('room') || DEFAULT_ROOM).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24) || DEFAULT_ROOM;
 
 export function deviceId() {
   const KEY = 'aiclub:device';
@@ -66,6 +67,7 @@ async function firebaseStore() {
 // ---------- демо ----------
 
 const DEMO_TEXT = {
+  products: ['ChatGPT', 'Claude', 'Midjourney', 'Cursor', 'Perplexity', 'ChatGPT', 'Gemini', 'Claude', 'ChatGPT', 'DeepSeek', 'Suno', 'Notion AI', 'ChatGPT', 'Claude Code', 'ElevenLabs', 'Gamma', 'Runway', 'Claude'],
   name: ['Аня', 'Денис', 'Саша', 'Мария', 'Алексей', 'Катя', 'Дима', 'Юля', 'Иван', 'Оля', 'Саша', 'Аня', 'Максим', 'Настя', 'Сергей', 'Лена'],
   sources: ['CRM', 'amoCRM', 'Bitrix24', 'Google Analytics', 'Яндекс Метрика', 'Excel', 'Google Таблицы',
     'CRM', 'Рекламный кабинет Meta', 'опросы клиентов', 'CRM', 'Telegram-бот', '1С', 'Power BI', 'amoCRM',
@@ -95,6 +97,9 @@ function demoStore() {
 
   function addDemo(qid, n) {
     const q = SLIDES.find((s) => s.id === qid);
+    if (!q) return;
+    const textKind = q.kind === 'cloud' || q.kind === 'cards';
+    if (textKind && !DEMO_TEXT[qid]) return;   // для нового текстового вопроса нет выдуманных ответов
     answers[qid] = answers[qid] || {};
     for (let i = 0; i < n; i++) {
       const d = 'demo' + Math.floor(Math.random() * 40);
@@ -118,9 +123,7 @@ function demoStore() {
   addDemo('name', 14);
   addDemo('field', 19);
   addDemo('stage', 17);
-  addDemo('sources', 18);
-  addDemo('ideas', 6);
-  addDemo('delegate', 21);
+  SLIDES.filter((x) => x.type === 'question' && !answers[x.id]).forEach((x) => addDemo(x.id, 16));
 
   setInterval(() => {
     const s = SLIDES[slide];

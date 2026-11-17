@@ -1,7 +1,7 @@
 // Экран на телевизоре. Стрелки ← → (или кликер) листают экраны — телефоны переключаются сами.
 
 import { EVENT, SLIDES, QUESTION_COUNT, TALK_COUNT } from './config.js';
-import { openStore, DEMO, ROOM, el, plural, clampSlide } from './store.js';
+import { openStore, DEMO, ROOM, DEFAULT_ROOM, el, plural, clampSlide } from './store.js';
 import { visible, hiddenCount, people, cloudWords, percentStats, choiceStats } from './tally.js';
 
 const root = document.getElementById('root');
@@ -23,7 +23,7 @@ function answerUrl() {
   const u = new URL('answer.html', location.href);
   u.search = '';
   u.hash = '';
-  if (ROOM !== 'main') u.searchParams.set('room', ROOM);
+  if (ROOM !== DEFAULT_ROOM) u.searchParams.set('room', ROOM);
   return u.toString();
 }
 
@@ -161,7 +161,7 @@ function buildQuestion(s) {
     header('ВОПРОС ' + s.n + ' ИЗ ' + QUESTION_COUNT),
     el('main', { class: 'q-main' }, [
       el('section', { class: 'q-left' }, [
-        el('h1', { class: 'q-title', text: s.title }),
+        el('h1', { class: 'q-title' + (s.title.length > 55 ? ' long' : ''), text: s.title }),
         refs.stage
       ]),
       el('aside', { class: 'q-right' }, [

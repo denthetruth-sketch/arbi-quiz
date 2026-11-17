@@ -84,6 +84,7 @@ body.screen:not(.awake) { cursor: none; }
   font-size: 2.9rem; line-height: 1.18; letter-spacing: -.01em;
   text-wrap: balance;
 }
+.q-title.long { font-size: 2.4rem; }
 .q-stage {
   flex: 1; min-height: 0; position: relative; overflow: hidden;
   border-radius: 1.6rem; background: var(--panel); border: 1px solid var(--line);
