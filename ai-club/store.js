@@ -67,6 +67,17 @@ async function firebaseStore() {
 // ---------- демо ----------
 
 const DEMO_TEXT = {
+  useful: [
+    'Пишу посты и письма клиентам в два раза быстрее',
+    'Разбираю договоры и длинные документы',
+    'Учу код и делаю мелкие скрипты сам',
+    'Готовлю презентации и структуру выступлений',
+    'Перевожу и общаюсь с тайскими партнёрами',
+    'Анализирую таблицы с продажами',
+    'Генерирую картинки для рекламы',
+    'Мозговой штурм идей для контента',
+    'Отвечаю клиентам в чатах ночью'
+  ],
   products: ['ChatGPT', 'Claude', 'Midjourney', 'Cursor', 'Perplexity', 'ChatGPT', 'Gemini', 'Claude', 'ChatGPT', 'DeepSeek', 'Suno', 'Notion AI', 'ChatGPT', 'Claude Code', 'ElevenLabs', 'Gamma', 'Runway', 'Claude'],
   name: ['Аня', 'Денис', 'Саша', 'Мария', 'Алексей', 'Катя', 'Дима', 'Юля', 'Иван', 'Оля', 'Саша', 'Аня', 'Максим', 'Настя', 'Сергей', 'Лена'],
   sources: ['CRM', 'amoCRM', 'Bitrix24', 'Google Analytics', 'Яндекс Метрика', 'Excel', 'Google Таблицы',
@@ -115,7 +126,7 @@ function demoStore() {
         answers[qid]['p' + (++seq)] = { t: list[seq % list.length], d: 'p' + seq, at: Date.now() };
       } else {
         const list = DEMO_TEXT[qid];
-        const pick = qid === 'ideas' ? list[seq % list.length] : list[Math.floor(Math.random() * list.length)];
+        const pick = (qid === 'ideas' || qid === 'useful') ? list[seq % list.length] : list[Math.floor(Math.random() * list.length)];
         answers[qid][key()] = { t: pick, d, at: Date.now() };
       }
     }
